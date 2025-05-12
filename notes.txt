@@ -8,3 +8,5 @@ Game screen:
 |       |             |
 |       |             |
 +-------+-------------+
+
+Stat bars: Health, Stamina

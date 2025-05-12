@@ -87,12 +87,12 @@ function PrintMap {
 }
 
 function PrintHud {
-    param ($health, $mana)
+    param ($health, $stamina)
     $idx = 0
     [System.Console]::SetCursorPosition(9, 1)
-    Write-Host "HP: ◼◼◼◼◼◼◼◼◼" -ForegroundColor Red
+    Write-Host "HP: ◼◼◼◼◼◼◼◼" -ForegroundColor Red
     [System.Console]::SetCursorPosition(9, 2)
-    Write-Host "MN: ◼◼◼◼◼◼◼◼◼" -ForegroundColor Blue
+    Write-Host "SM: ◼◼◼◼◼◼◼◼" -ForegroundColor Blue
 }
 
 # calling world generation
@@ -102,7 +102,7 @@ $world = GenerateWorld -world $world
 while ($true) {
     Clear-Host
     PrintMap -world $world
-    PrintHud -health 2 -mana 2
+    PrintHud -health 2 -stamina 2
     $pressedButton = [Console]::ReadKey($true)
     switch ($pressedButton.KeyChar) {
         'w' { if ($player.y -gt 0) { $player.y-- } }
