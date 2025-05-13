@@ -19,8 +19,10 @@ $gameWindow = @'
 |       |             |
 +-------+-------------+
 '@
-$mapWidth = 7
-$mapHeight = 7
+$viewPortWidth = 7
+$viewPortHeight = 7
+$worldWidth = 14
+$worldHeight = 14
 $world = @()
 
 # player object
@@ -45,9 +47,25 @@ $item = [PSCustomObject]@{
 # functions:
 # simple function to print out objects with 4 most important items: x, y, print and color
 function printItem {
-    param ($printable)
-    [System.Console]::SetCursorPosition($printable.x + 1, $printable.y + 1)
+    param(
+        [PSCustomObject]$printable,
+        [int]$origX = 0,
+        [int]$origY = 0
+    )
+    # compute screen position (+1 for the ASCII border)
+    [Console]::SetCursorPosition(($printable.x - $origX) + 1, ($printable.y - $origY) + 1)
     Write-Host $printable.print -ForegroundColor $printable.color
+}
+
+function ifInViewport {
+    param(
+        [PSCustomObject]$printable,
+        [int]$origX = 0,
+        [int]$origY = 0
+    )
+    if ($printable.x -ge $origX -and $printable.x -lt $origX + $viewPortWidth -and $printable.y -ge $origY -and $printable.y -lt $origY + $viewPortHeight) {
+        return $true
+    }
 }
 
 # making a map
@@ -55,8 +73,8 @@ function GenerateWorld {
     param ($world)
 
     $worldBlocks = ',.;:'
-    for ($x = 0; $x -lt $mapWidth; $x++) {
-        for ($y = 0; $y -lt $mapHeight; $y++) {
+    for ($x = 0; $x -lt $worldWidth; $x++) {
+        for ($y = 0; $y -lt $worldHeight; $y++) {
             $world += [PSCustomObject]@{
                 print = $worldBlocks[$(Get-Random -Maximum 3)]
                 info  = 'grass'
@@ -66,24 +84,34 @@ function GenerateWorld {
             }
         }
     }
-
     return $world
 }
 
 # function for printing the game window
 function PrintMap {
-    param ($world)
-
+    param($world)
+    Clear-Host
     Write-Host $gameWindow
-    # printing the world map
-    foreach ($tile in $world) {
-        printItem -printable $tile
+
+    # calculate camera origin
+    $halfW = [math]::Floor($viewPortWidth / 2)
+    $halfH = [math]::Floor($viewPortHeight / 2)
+    $origX = [math]::Max(0, [math]::Min($player.x - $halfW, $worldWidth - $viewPortWidth))
+    $origY = [math]::Max(0, [math]::Min($player.y - $halfH, $worldHeight - $viewPortHeight))
+
+    # draw all visible tiles
+    foreach ($t in $world) {
+        if ($t.x -ge $origX -and $t.x -lt $origX + $viewPortWidth -and $t.y -ge $origY -and $t.y -lt $origY + $viewPortHeight) {
+            printItem -printable $t -origX $origX -origY $origY
+        }
     }
 
-    # printing out the player
-    printItem -printable $item
-
-    printItem -printable $player
+    # draw the item and player via the same helper
+    if (ifInViewport -printable $item -origX $origX -origY $origY) {
+        printItem -printable $item   -origX $origX -origY $origY
+    }
+    
+    printItem -printable $player -origX $origX -origY $origY
 }
 
 function PrintHud {
@@ -102,16 +130,12 @@ while ($true) {
     PrintHud -health 2 -stamina 2
     $pressedButton = [Console]::ReadKey($true)
     switch ($pressedButton.KeyChar) {
-        'w' { if ($player.y -gt 0) { $player.y-- } }
-        'a' { if ($player.x -gt 0) { $player.x-- } }
-        's' { if ($player.y -lt $mapHeight - 1) { $player.y++ } }
-        'd' { if ($player.x -lt $mapWidth - 1) { $player.x++ } }
-        'e' {  }
-
-        'p' { 
-            clear-Host
-            return
-        }
+        'w' { if ($player.y -gt 0                   ) { $player.y-- } }
+        's' { if ($player.y -lt $worldHeight - 1    ) { $player.y++ } }
+        'a' { if ($player.x -gt 0                   ) { $player.x-- } }
+        'd' { if ($player.x -lt $worldWidth - 1    ) { $player.x++ } }
+        'e' { }
+        'p' { Clear-Host; return }
         Default {}
     }
 }
