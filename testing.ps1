@@ -88,11 +88,8 @@ function PrintMap {
 
 function PrintHud {
     param ($health, $stamina)
-    $idx = 0
     [System.Console]::SetCursorPosition(9, 1)
     Write-Host "HP: ◼◼◼◼◼◼◼◼" -ForegroundColor Red
-    [System.Console]::SetCursorPosition(9, 2)
-    Write-Host "SM: ◼◼◼◼◼◼◼◼" -ForegroundColor Blue
 }
 
 # calling world generation
