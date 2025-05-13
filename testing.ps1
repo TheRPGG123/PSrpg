@@ -5,8 +5,6 @@ chcp 65001
 [Console]::InputEncoding = [Text.UTF8Encoding]::new()
 [Console]::CursorVisible = $false
 
-Add-Type -Path ".\Libnoise\LibNoise.dll"
-
 Clear-Host
 
 ## setup of initial important parameters
@@ -25,6 +23,13 @@ $viewPortWidth = 7
 $viewPortHeight = 7
 $worldWidth = 50
 $worldHeight = 50
+$worldSeed = Get-Random -Maximum 100
+$worldScale = 0.1
+$worldOctaves = 4
+$worldPersistance = 0.6
+$worldWater = 0.2
+$worldPlains = 0.6
+$worldForests = 0.5
 $world = @()
 
 # player object
@@ -32,9 +37,10 @@ $player = [PSCustomObject]@{
     print = '@'
     class = 'none'
     color = 'white'
-    x     = 7
-    y     = 7
+    x     = $worldWidth / 2
+    y     = $worldHeight / 2
 }
+
 $script:playerInventory = @(
     [PSCustomObject]@{
         print       = '/'
@@ -63,16 +69,16 @@ $script:groundItems = @(
         name        = 'Square'
         description = 'Not really sure waht it is, but it menaces with some dark energy...'
         color       = 'yellow'
-        x           = 2
-        y           = 2
+        x           = 26
+        y           = 26
     },
     [PSCustomObject]@{
         print       = '/'
         name        = 'Iron Sword'
         description = '+5 Attack, reliable blade'
         color       = 'Gray'
-        x           = 5
-        y           = 5
+        x           = 30
+        y           = 30
     }
 )
 
@@ -101,23 +107,75 @@ function ifInViewport {
     }
 }
 
-# making a map
+# making a map with fractal Brownian motion
 function GenerateWorld {
-    param ($world)
+    param(
+        [array]  $world = @(),
+        [int]    $width = 100,
+        [int]    $height = 100,
+        [int]    $seed = (Get-Random),
+        [double] $scale = 0.1,
+        [int]    $octaves = 4,
+        [double] $persistence = 0.5,
+        [double] $waterLevel = -0.3,
+        [double] $plainsLevel = 0.0,
+        [double] $forestLevel = 0.5
+    )
 
-    Write-Host "Generating..."
-    $worldBlocks = ',.;:'
-    for ($x = 0; $x -lt $worldWidth; $x++) {
-        for ($y = 0; $y -lt $worldHeight; $y++) {
+    # derive offsets from seed
+    $rnd = [Random]::new($seed)
+    $offX = $rnd.Next(0, 100000)
+    $offY = $rnd.Next(0, 100000)
+
+    # raw int hash → [-1..1]
+    function RawNoise {
+        param([int]$x, [int]$y)
+        [bigint]$n = $x + $y * 57
+        $n = ($n -shr 13) -bxor $n
+        [bigint]$t = $n * ($n * $n * 15731) + 789221
+        $t = $t -band 0x7FFFFFFF
+
+        return 1.0 - ([double]$t / 1073741824.0)
+    }
+
+    function Lerp($a, $b, $t) { $a + ($b - $a) * $t }
+
+    function Smooth($x, $y) {
+        $ix = [math]::Floor($x); $iy = [math]::Floor($y)
+        $fx = $x - $ix; $fy = $y - $iy
+        $v1 = RawNoise $ix    $iy
+        $v2 = RawNoise ($ix + 1)$iy
+        $v3 = RawNoise $ix    ($iy + 1)
+        $v4 = RawNoise ($ix + 1)($iy + 1)
+        $i1 = Lerp $v1 $v2 $fx; $i2 = Lerp $v3 $v4 $fx
+        Lerp $i1 $i2 $fy
+    }
+
+    function FBM($x, $y) {
+        $tot = 0; $freq = 1; $amp = 1; $max = 0
+        for ($o = 0; $o -lt $octaves; $o++) {
+            $tot += (Smooth ($x * $freq) ($y * $freq)) * $amp
+            $max += $amp
+            $amp *= $persistence
+            $freq *= 2
+        }
+        $tot / $max
+    }
+
+    for ($x = 0; $x -lt $width; $x++) {
+        for ($y = 0; $y -lt $height; $y++) {
+            $n = FBM ($x * $scale) ($y * $scale)
+            if ($n -lt $waterLevel ) { $c = '~'; $col = 'DarkBlue' }
+            elseif ($n -lt $plainsLevel) { $c = '.'; $col = 'DarkGreen' }
+            elseif ($n -lt $forestLevel) { $c = ','; $col = 'Green' }
+            else { $c = '^'; $col = 'Gray' }
+
             $world += [PSCustomObject]@{
-                print = $worldBlocks[$(Get-Random -Maximum 3)]
-                info  = 'grass'
-                color = 'green'
-                x     = $x
-                y     = $y
+                print = $c; info = ''; color = $col; x = $x; y = $y
             }
         }
     }
+
     return $world
 }
 
@@ -166,6 +224,7 @@ function PrintHud {
     Write-Host "x:$($player.x), y:$($player.y)"
 }
 
+# dropping items from inventory to ground
 function dropItem {
     param ($item)
 
@@ -179,6 +238,7 @@ function dropItem {
     }
 }
 
+# interraction with items in inventory
 function itemInterraction {
     param (
         [PSCustomObject]$item
@@ -233,7 +293,7 @@ function inventory {
 }
 
 # calling world generation
-$world = GenerateWorld -world $world
+$world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight -seed $worldSeed -scale $worldScale
 
 # Main game loop
 while ($true) {
