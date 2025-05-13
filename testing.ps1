@@ -30,9 +30,29 @@ $player = [PSCustomObject]@{
     print = '@'
     class = 'none'
     color = 'white'
-    x     = 3
-    y     = 3
+    x     = 7
+    y     = 7
 }
+$inventory = @(
+    [PSCustomObject]@{
+        print       = '/'
+        name        = 'Iron Sword'
+        description = '+5 Attack, reliable blade'
+        color       = 'Gray'
+    }
+    [PSCustomObject]@{
+        print       = 'O'
+        name        = 'Wooden Shield'
+        description = '+3 Defense, lightweight'
+        color       = 'DarkYellow'
+    }
+    [PSCustomObject]@{
+        print       = '!'
+        name        = 'Health Potion'
+        description = 'Restores 50 HP'
+        color       = 'Red'
+    }
+)
 
 # first item object, later do this with a .json file
 $item = [PSCustomObject]@{
@@ -57,6 +77,7 @@ function printItem {
     Write-Host $printable.print -ForegroundColor $printable.color
 }
 
+# checks is an item is in viewport to draw it or not
 function ifInViewport {
     param(
         [PSCustomObject]$printable,
@@ -118,12 +139,35 @@ function PrintHud {
     param ($health, $stamina)
     [System.Console]::SetCursorPosition(9, 1)
     Write-Host "HP: ◼◼◼◼◼◼◼◼" -ForegroundColor Red
+
+    [System.Console]::SetCursorPosition(9, 3)
+    Write-Host "x:$($player.x), y:$($player.y)"
+}
+
+function inventory {
+    while ($true) {
+        Clear-Host
+        Write-Host "Inventory:"
+        $inventoryY = 2
+        for ($i = 0; $i -lt $inventory.Length; $i++) {
+            [System.Console]::SetCursorPosition(1, $inventoryY)
+            Write-Host "|" -NoNewline
+            Write-Host "$($inventory[$i].print) $($inventory[$i].name)" -ForegroundColor $inventory[$i].color
+            $inventoryY++
+        }
+        Write-Host
+        Write-Host "e - Exit"
+        $pressedButton = [Console]::ReadKey($true)
+        switch ($pressedButton.KeyChar) {
+            'e' { return }
+        }
+    }
 }
 
 # calling world generation
 $world = GenerateWorld -world $world
 
-# test game loop
+# Main game loop
 while ($true) {
     Clear-Host
     PrintMap -world $world
@@ -134,7 +178,8 @@ while ($true) {
         's' { if ($player.y -lt $worldHeight - 1    ) { $player.y++ } }
         'a' { if ($player.x -gt 0                   ) { $player.x-- } }
         'd' { if ($player.x -lt $worldWidth - 1    ) { $player.x++ } }
-        'e' { }
+        'e' { inventory } # inventory
+        'f' {  } # interractions
         'p' { Clear-Host; return }
         Default {}
     }
