@@ -5,6 +5,8 @@ chcp 65001
 [Console]::InputEncoding = [Text.UTF8Encoding]::new()
 [Console]::CursorVisible = $false
 
+Add-Type -Path ".\Libnoise\LibNoise.dll"
+
 Clear-Host
 
 ## setup of initial important parameters
@@ -21,8 +23,8 @@ $gameWindow = @'
 '@
 $viewPortWidth = 7
 $viewPortHeight = 7
-$worldWidth = 14
-$worldHeight = 14
+$worldWidth = 50
+$worldHeight = 50
 $world = @()
 
 # player object
@@ -33,7 +35,7 @@ $player = [PSCustomObject]@{
     x     = 7
     y     = 7
 }
-$inventory = @(
+$script:playerInventory = @(
     [PSCustomObject]@{
         print       = '/'
         name        = 'Iron Sword'
@@ -55,16 +57,26 @@ $inventory = @(
 )
 
 # first item object, later do this with a .json file
-$item = [PSCustomObject]@{
-    print       = '☐'
-    name        = 'square'
-    description = 'Not really sure waht it is, but it menaces with some dark energy...'
-    color       = 'yellow'
-    x           = 2
-    y           = 2
-}
+$script:groundItems = @(
+    [PSCustomObject]@{
+        print       = '☐'
+        name        = 'Square'
+        description = 'Not really sure waht it is, but it menaces with some dark energy...'
+        color       = 'yellow'
+        x           = 2
+        y           = 2
+    },
+    [PSCustomObject]@{
+        print       = '/'
+        name        = 'Iron Sword'
+        description = '+5 Attack, reliable blade'
+        color       = 'Gray'
+        x           = 5
+        y           = 5
+    }
+)
 
-# functions:
+## functions:
 # simple function to print out objects with 4 most important items: x, y, print and color
 function printItem {
     param(
@@ -93,6 +105,7 @@ function ifInViewport {
 function GenerateWorld {
     param ($world)
 
+    Write-Host "Generating..."
     $worldBlocks = ',.;:'
     for ($x = 0; $x -lt $worldWidth; $x++) {
         for ($y = 0; $y -lt $worldHeight; $y++) {
@@ -106,6 +119,16 @@ function GenerateWorld {
         }
     }
     return $world
+}
+
+# printing all the ground items from the array
+function printGroundItems {
+    param($groundItems)
+    foreach ($item in $groundItems) {
+        if (ifInViewport -printable $item -origX $origX -origY $origY) {
+            printItem -printable $item   -origX $origX -origY $origY
+        }
+    }
 }
 
 # function for printing the game window
@@ -127,14 +150,13 @@ function PrintMap {
         }
     }
 
-    # draw the item and player via the same helper
-    if (ifInViewport -printable $item -origX $origX -origY $origY) {
-        printItem -printable $item   -origX $origX -origY $origY
-    }
+    # draw the item and player via the same helper 
+    printGroundItems -groundItems $groundItems
     
     printItem -printable $player -origX $origX -origY $origY
 }
 
+# printing HUD and all of it's elements
 function PrintHud {
     param ($health, $stamina)
     [System.Console]::SetCursorPosition(9, 1)
@@ -144,21 +166,67 @@ function PrintHud {
     Write-Host "x:$($player.x), y:$($player.y)"
 }
 
+function dropItem {
+    param ($item)
+
+    $script:groundItems += [PSCustomObject]@{
+        print       = $item.print
+        name        = $item.name
+        description = $item.description
+        color       = $item.color
+        x           = $player.x
+        y           = $player.y
+    }
+}
+
+function itemInterraction {
+    param (
+        [PSCustomObject]$item
+    )
+    Clear-Host
+    Write-Host "(Enter - return; d - drop)"
+    Write-Host "| $($item.print) $($item.name)" -ForegroundColor $item.color
+    Write-Host " $($item.description)"
+    $pressedButton = [Console]::ReadKey($true)
+    switch ($pressedButton.Key) {
+        'e' { return }
+        'd' {
+            dropItem -item $item
+            $list = [System.Collections.ArrayList]$script:playerInventory
+            $list.Remove($item) | Out-Null
+            $script:playerInventory = $list.ToArray()
+            return
+        }
+    }
+}
+
+# function to handle the inventory
 function inventory {
+    param()
+    $selectedItem = 0
     while ($true) {
         Clear-Host
-        Write-Host "Inventory:"
+        Write-Host "Inventory (e - Exit; w,s - move; Enter - Select)"
         $inventoryY = 2
-        for ($i = 0; $i -lt $inventory.Length; $i++) {
+        for ($i = 0; $i -lt $script:playerInventory.Count; $i++) {
             [System.Console]::SetCursorPosition(1, $inventoryY)
             Write-Host "|" -NoNewline
-            Write-Host "$($inventory[$i].print) $($inventory[$i].name)" -ForegroundColor $inventory[$i].color
+            if ($i -eq $selectedItem) {
+                Write-Host "$($script:playerInventory[$i].print) $($script:playerInventory[$i].name)" -ForegroundColor $script:playerInventory[$i].color -BackgroundColor White
+            }
+            else {
+                Write-Host "$($script:playerInventory[$i].print) $($script:playerInventory[$i].name)" -ForegroundColor $script:playerInventory[$i].color
+            }
             $inventoryY++
         }
-        Write-Host
-        Write-Host "e - Exit"
+        
         $pressedButton = [Console]::ReadKey($true)
-        switch ($pressedButton.KeyChar) {
+        switch ($pressedButton.Key) {
+            'w' { if ($selectedItem -gt 0) { $selectedItem-- } }
+            's' { if ($selectedItem -lt $script:playerInventory.Count - 1) { $selectedItem++ } }
+            'Enter' {
+                itemInterraction -item $script:playerInventory[$selectedItem]
+            }
             'e' { return }
         }
     }
