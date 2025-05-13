@@ -1,12 +1,13 @@
-Game screen:
-+-------+-------------+
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-+-------+-------------+
+Small game about random cities and dungeons scattered about the map.
+You go around and fight in the dungeons then go to the towns to sell your loot.
 
+TO-DO:
+- Make mountains and lakes impaassable, player should spawn on the nearest spot off of the mountains.
+- Seperate the world map from individual locations
+- Add a system for spawning locations (Dunceons, ruins, towns...)
+
+PLAN:
 Stat bars: Health, Stamina
+melee weapons: sword, axe, mace, whip, spear
+armor: wooden, copper, bronze, iron, steel
+potions: health, stamina, teleportation

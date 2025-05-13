@@ -24,7 +24,7 @@ $viewPortHeight = 7
 $worldWidth = 50
 $worldHeight = 50
 $worldSeed = Get-Random -Maximum 100
-$worldScale = 0.1
+$worldScale = 0.3
 $worldOctaves = 4
 $worldPersistance = 0.6
 $worldWater = 0.2
@@ -122,19 +122,25 @@ function GenerateWorld {
         [double] $forestLevel = 0.5
     )
 
-    # derive offsets from seed
+    # derive two random offsets from seed
     $rnd = [Random]::new($seed)
     $offX = $rnd.Next(0, 100000)
     $offY = $rnd.Next(0, 100000)
 
-    # raw int hash → [-1..1]
+    [System.Console]::SetCursorPosition(2, 2)
+    Write-Host "Generating world..."
+
+    # raw int hash → [-1..1], now shifted
     function RawNoise {
         param([int]$x, [int]$y)
-        [bigint]$n = $x + $y * 57
+        # apply our offsets
+        [bigint]$xi = $x + $offX
+        [bigint]$yi = $y + $offY
+        # the old hash, but on (xi, yi)
+        [bigint]$n = $xi + $yi * 57
         $n = ($n -shr 13) -bxor $n
         [bigint]$t = $n * ($n * $n * 15731) + 789221
         $t = $t -band 0x7FFFFFFF
-
         return 1.0 - ([double]$t / 1073741824.0)
     }
 
@@ -152,16 +158,17 @@ function GenerateWorld {
     }
 
     function FBM($x, $y) {
-        $tot = 0; $freq = 1; $amp = 1; $max = 0
+        $total = 0; $freq = 1; $amp = 1; $max = 0
         for ($o = 0; $o -lt $octaves; $o++) {
-            $tot += (Smooth ($x * $freq) ($y * $freq)) * $amp
+            $total += (Smooth ($x * $freq) ($y * $freq)) * $amp
             $max += $amp
             $amp *= $persistence
             $freq *= 2
         }
-        $tot / $max
+        return $total / $max
     }
 
+    # build the world
     for ($x = 0; $x -lt $width; $x++) {
         for ($y = 0; $y -lt $height; $y++) {
             $n = FBM ($x * $scale) ($y * $scale)
@@ -178,6 +185,7 @@ function GenerateWorld {
 
     return $world
 }
+
 
 # printing all the ground items from the array
 function printGroundItems {
