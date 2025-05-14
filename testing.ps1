@@ -117,6 +117,9 @@ $script:locations = @(
     }
 )
 
+$script:world = @()
+$script:impassablWorld = @()
+
 ## functions:
 # simple function to print out objects with 4 most important items: x, y, print and color
 function printItem {
@@ -214,7 +217,11 @@ function GenerateWorld {
             else { $c = '^'; $col = 'Gray' }
 
             $world += [PSCustomObject]@{
-                print = $c; info = ''; color = $col; x = $x; y = $y
+                print = $c
+                info  = ''
+                color = $col
+                x     = $x
+                y     = $y
             }
         }
     }
@@ -346,26 +353,43 @@ function inventory {
     }
 }
 
+# function where all moving and moving checks are done
 function moving {
     param([string]$direcrion)
 
     switch ($direcrion) {
         'up' {
+            $tileX = $script:player.x
+            $tileY = $script:player.y - 1
+            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
+            if ($tile.print -match '[~^]') { return }
             if ($script:player.y -gt 0) {
                 $script:player.y--
             } 
         }
         'down' {
+            $tileX = $script:player.x
+            $tileY = $script:player.y + 1
+            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
+            if ($tile.print -match '[~^]') { return }
             if ($script:player.y -lt $worldHeight - 1) {
                 $script:player.y++
             }
         }
         'left' {
+            $tileX = $script:player.x - 1
+            $tileY = $script:player.y
+            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
+            if ($tile.print -match '[~^]') { return }
             if ($script:player.x -gt 0 ) {
                 $script:player.x--
             }
         }
         'right' {
+            $tileX = $script:player.x + 1
+            $tileY = $script:player.y
+            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
+            if ($tile.print -match '[~^]') { return }
             if ($script:player.x -lt $worldWidth - 1) {
                 $script:player.x++
             }
@@ -373,13 +397,25 @@ function moving {
     }
 }
 
+# Function that draws, listens for input and executes the world map functionality
 function gamePlay {
     Clear-Host
     # calling world generation with all the parameters 
     # here for now, Make a screen later for more varied world generation
-    $world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight `
+    $script:world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight `
         -seed $worldSeed -scale $worldScale -octaves $worldOctaves -persistence $worldPersistance `
         -waterLevel $worldWater -plainsLevel $worldPlains -forestLevel $worldForests
+    foreach ($tile in $world) {
+        if ($tile.print -match '[~^]') {
+            $script:impassablWorld += [PSCustomObject]@{
+                print = $tile.print
+                info  = $tile.info
+                color = $tile.color
+                x     = $tile.x
+                y     = $tile.y
+            }
+        }
+    }
 
     while ($true) {
         Clear-Host
@@ -400,6 +436,7 @@ function gamePlay {
     # Main game loop
 }
 
+# main menu with multiple choices
 function mainMenu {
     $selectedMainMenuOption = 0
     # immediatly going to the game if devmode enabled
