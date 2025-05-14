@@ -5,9 +5,28 @@ chcp 65001
 [Console]::InputEncoding = [Text.UTF8Encoding]::new()
 [Console]::CursorVisible = $false
 
+$script:devmode = $false
+
 Clear-Host
 
 ## setup of initial important parameters
+$titlecard = @"
+______  _________________ _____ 
+| ___ \/  ___| ___ \ ___ \  __ \
+| |_/ /\ '--.| |_/ / |_/ / |  \/
+|  __/  '--. \    /|  __/| | __ 
+| |    /\__/ / |\ \| |   | |_\ \
+\_|    \____/\_| \_\_|    \____/
+                                
+                                
+"@
+$mainMenuOptions = @(
+    "New game"
+    "Continue game"
+    "Credits"
+    "Quit"
+)
+
 $gameWindow = @'
 +-------+-------------+
 |       |             |
@@ -24,12 +43,12 @@ $viewPortHeight = 7
 $worldWidth = 25
 $worldHeight = 25
 $worldSeed = Get-Random -Maximum 100
-$worldScale = 0.4
+$worldScale = 0.2
 $worldOctaves = 4
-$worldPersistance = 0.6
-$worldWater = 0.2
-$worldPlains = 0.6
-$worldForests = 0.5
+$worldPersistance = 0.2
+$worldWater = -0.2
+$worldPlains = 0.2
+$worldForests = 0.7
 $world = @()
 
 # script:player object
@@ -131,7 +150,7 @@ function GenerateWorld {
         [int]    $width = 100,
         [int]    $height = 100,
         [int]    $seed = (Get-Random),
-        [double] $scale = 0.1,
+        [double] $scale = 0.3,
         [int]    $octaves = 4,
         [double] $persistence = 0.5,
         [double] $waterLevel = -0.3,
@@ -202,7 +221,6 @@ function GenerateWorld {
 
     return $world
 }
-
 
 # printing all the ground items from the array
 function printGroundItems {
@@ -328,9 +346,6 @@ function inventory {
     }
 }
 
-# calling world generation
-$world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight -seed $worldSeed -scale $worldScale
-
 function moving {
     param([string]$direcrion)
 
@@ -358,20 +373,67 @@ function moving {
     }
 }
 
-# Main game loop
-while ($true) {
+function gamePlay {
     Clear-Host
-    PrintMap -world $world
-    PrintHud -health 2 -stamina 2
-    $pressedButton = [Console]::ReadKey($true)
-    switch ($pressedButton.KeyChar) {
-        'w' { moving -direcrion 'up' }
-        's' { moving -direcrion 'down' }
-        'a' { moving -direcrion 'left' }
-        'd' { moving -direcrion 'right' }
-        'e' { inventory } # inventory
-        'f' {  } # interractions
-        'p' { Clear-Host; return }
-        Default {}
+    # calling world generation with all the parameters 
+    # here for now, Make a screen later for more varied world generation
+    $world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight `
+        -seed $worldSeed -scale $worldScale -octaves $worldOctaves -persistence $worldPersistance `
+        -waterLevel $worldWater -plainsLevel $worldPlains -forestLevel $worldForests
+
+    while ($true) {
+        Clear-Host
+        PrintMap -world $world
+        PrintHud -health 2 -stamina 2
+        $pressedButton = [Console]::ReadKey($true)
+        switch ($pressedButton.KeyChar) {
+            'w' { moving -direcrion 'up' }
+            's' { moving -direcrion 'down' }
+            'a' { moving -direcrion 'left' }
+            'd' { moving -direcrion 'right' }
+            'e' { inventory } # inventory
+            'f' {  } # interractions
+            'p' { Clear-Host; return }
+            Default {}
+        }
+    }
+    # Main game loop
+}
+
+function mainMenu {
+    $selectedMainMenuOption = 0
+    # immediatly going to the game if devmode enabled
+    if ($script:devmode) {
+        gamePlay
+    }
+    while ($true) {
+        Clear-Host
+        Write-Host $titlecard -ForegroundColor DarkCyan
+        for ($i = 0; $i -le $mainMenuOptions.Length - 1; $i++) {
+            if ($selectedMainMenuOption -eq $i) {
+                Write-Host " " -NoNewline
+                Write-Host "->" -ForegroundColor Cyan -BackgroundColor DarkGray -NoNewline
+                Write-Host " $($mainMenuOptions[$i])" -ForegroundColor Cyan
+            }
+            else {
+                Write-Host " -> $($mainMenuOptions[$i])" -ForegroundColor Cyan
+            }
+        }
+        $pressedButton = [Console]::ReadKey($true)
+        switch ($pressedButton.Key) {
+            'w' { if ($selectedMainMenuOption -gt 0) { $selectedMainMenuOption-- } }
+            's' { if ($selectedMainMenuOption -lt $mainMenuOptions.Length - 1) { $selectedMainMenuOption++ } }
+            'Enter' {
+                switch ($selectedMainMenuOption) {
+                    0 { gamePlay }
+                    1 {}
+                    2 {}
+                    3 { Clear-Host; return }
+                }
+            }
+            Default {}
+        }
     }
 }
+
+mainMenu
