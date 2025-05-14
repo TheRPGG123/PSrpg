@@ -21,10 +21,10 @@ $gameWindow = @'
 '@
 $viewPortWidth = 7
 $viewPortHeight = 7
-$worldWidth = 50
-$worldHeight = 50
+$worldWidth = 25
+$worldHeight = 25
 $worldSeed = Get-Random -Maximum 100
-$worldScale = 0.3
+$worldScale = 0.4
 $worldOctaves = 4
 $worldPersistance = 0.6
 $worldWater = 0.2
@@ -32,13 +32,14 @@ $worldPlains = 0.6
 $worldForests = 0.5
 $world = @()
 
-# player object
-$player = [PSCustomObject]@{
-    print = '@'
-    class = 'none'
-    color = 'white'
-    x     = $worldWidth / 2
-    y     = $worldHeight / 2
+# script:player object
+$script:player = [PSCustomObject]@{
+    print    = '@'
+    class    = 'none'
+    color    = 'white'
+    x        = [int]($worldWidth / 2)  
+    y        = [int]($worldHeight / 2)
+    location = 'world'
 }
 
 $script:playerInventory = @(
@@ -69,16 +70,31 @@ $script:groundItems = @(
         name        = 'Square'
         description = 'Not really sure waht it is, but it menaces with some dark energy...'
         color       = 'yellow'
-        x           = 26
-        y           = 26
+        x           = 12
+        y           = 12
+        location    = 'town'
     },
     [PSCustomObject]@{
         print       = '/'
         name        = 'Iron Sword'
         description = '+5 Attack, reliable blade'
         color       = 'Gray'
-        x           = 30
-        y           = 30
+        x           = 13
+        y           = 13
+        location    = 'town'
+    }
+)
+
+$script:locations = @(
+    [PSCustomObject]@{
+        print          = 'T'
+        name           = 'town name'
+        description    = 'Short description of a town'
+        color          = 'yellow'
+        x              = 12
+        y              = 12
+        location       = 'world'
+        whenInLocation = 'town'
     }
 )
 
@@ -91,6 +107,7 @@ function printItem {
         [int]$origY = 0
     )
     # compute screen position (+1 for the ASCII border)
+    
     [Console]::SetCursorPosition(($printable.x - $origX) + 1, ($printable.y - $origY) + 1)
     Write-Host $printable.print -ForegroundColor $printable.color
 }
@@ -123,7 +140,7 @@ function GenerateWorld {
     )
 
     # derive two random offsets from seed
-    $rnd = [Random]::new($seed)
+    $rnd = [Random]::new($seed) 
     $offX = $rnd.Next(0, 100000)
     $offY = $rnd.Next(0, 100000)
 
@@ -191,8 +208,17 @@ function GenerateWorld {
 function printGroundItems {
     param($groundItems)
     foreach ($item in $groundItems) {
-        if (ifInViewport -printable $item -origX $origX -origY $origY) {
+        if ($item.location -eq $script:player.location -and (ifInViewport -printable $item -origX $origX -origY $origY)) {
             printItem -printable $item   -origX $origX -origY $origY
+        }
+    }
+}
+
+function printLocations {
+    param($locations)
+    foreach ($place in $locations) {
+        if ($place.location -eq $script:player.location -and (ifInViewport -printable $place -origX $origX -origY $origY)) {
+            printItem -printable $place   -origX $origX -origY $origY
         }
     }
 }
@@ -206,8 +232,8 @@ function PrintMap {
     # calculate camera origin
     $halfW = [math]::Floor($viewPortWidth / 2)
     $halfH = [math]::Floor($viewPortHeight / 2)
-    $origX = [math]::Max(0, [math]::Min($player.x - $halfW, $worldWidth - $viewPortWidth))
-    $origY = [math]::Max(0, [math]::Min($player.y - $halfH, $worldHeight - $viewPortHeight))
+    $origX = [math]::Max(0, [math]::Min($script:player.x - $halfW, $worldWidth - $viewPortWidth))
+    $origY = [math]::Max(0, [math]::Min($script:player.y - $halfH, $worldHeight - $viewPortHeight))
 
     # draw all visible tiles
     foreach ($t in $world) {
@@ -216,10 +242,12 @@ function PrintMap {
         }
     }
 
-    # draw the item and player via the same helper 
-    printGroundItems -groundItems $groundItems
+    # draw the item and script:player via the same helper 
+    printGroundItems -groundItems $script:groundItems
+
+    printLocations -locations $script:locations
     
-    printItem -printable $player -origX $origX -origY $origY
+    printItem -printable $script:player -origX $origX -origY $origY
 }
 
 # printing HUD and all of it's elements
@@ -229,7 +257,7 @@ function PrintHud {
     Write-Host "HP: ◼◼◼◼◼◼◼◼" -ForegroundColor Red
 
     [System.Console]::SetCursorPosition(9, 3)
-    Write-Host "x:$($player.x), y:$($player.y)"
+    Write-Host "x:$($script:player.x), y:$($script:player.y)"
 }
 
 # dropping items from inventory to ground
@@ -241,8 +269,8 @@ function dropItem {
         name        = $item.name
         description = $item.description
         color       = $item.color
-        x           = $player.x
-        y           = $player.y
+        x           = $script:player.x
+        y           = $script:player.y
     }
 }
 
@@ -303,6 +331,33 @@ function inventory {
 # calling world generation
 $world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight -seed $worldSeed -scale $worldScale
 
+function moving {
+    param([string]$direcrion)
+
+    switch ($direcrion) {
+        'up' {
+            if ($script:player.y -gt 0) {
+                $script:player.y--
+            } 
+        }
+        'down' {
+            if ($script:player.y -lt $worldHeight - 1) {
+                $script:player.y++
+            }
+        }
+        'left' {
+            if ($script:player.x -gt 0 ) {
+                $script:player.x--
+            }
+        }
+        'right' {
+            if ($script:player.x -lt $worldWidth - 1) {
+                $script:player.x++
+            }
+        }
+    }
+}
+
 # Main game loop
 while ($true) {
     Clear-Host
@@ -310,10 +365,10 @@ while ($true) {
     PrintHud -health 2 -stamina 2
     $pressedButton = [Console]::ReadKey($true)
     switch ($pressedButton.KeyChar) {
-        'w' { if ($player.y -gt 0                   ) { $player.y-- } }
-        's' { if ($player.y -lt $worldHeight - 1    ) { $player.y++ } }
-        'a' { if ($player.x -gt 0                   ) { $player.x-- } }
-        'd' { if ($player.x -lt $worldWidth - 1    ) { $player.x++ } }
+        'w' { moving -direcrion 'up' }
+        's' { moving -direcrion 'down' }
+        'a' { moving -direcrion 'left' }
+        'd' { moving -direcrion 'right' }
         'e' { inventory } # inventory
         'f' {  } # interractions
         'p' { Clear-Host; return }
