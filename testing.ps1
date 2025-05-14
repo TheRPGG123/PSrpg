@@ -20,12 +20,6 @@ ______  _________________ _____
                                 
                                 
 "@
-$mainMenuOptions = @(
-    "New game"
-    "Continue game"
-    "Credits"
-    "Quit"
-)
 
 $gameWindow = @'
 +-------+-------------+
@@ -438,6 +432,12 @@ function gamePlay {
 
 # main menu with multiple choices
 function mainMenu {
+    $mainMenuOptions = @(
+        "New game"
+        "Continue game"
+        "Credits"
+        "Quit"
+    )
     $selectedMainMenuOption = 0
     # immediatly going to the game if devmode enabled
     if ($script:devmode) {
