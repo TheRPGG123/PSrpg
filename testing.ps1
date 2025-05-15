@@ -34,24 +34,27 @@ $gameWindow = @'
 '@
 $viewPortWidth = 7
 $viewPortHeight = 7
-$worldWidth = 25
-$worldHeight = 25
-$worldSeed = Get-Random -Maximum 100
-$worldScale = 0.2
-$worldOctaves = 4
-$worldPersistance = 0.2
-$worldWater = -0.2
-$worldPlains = 0.2
-$worldForests = 0.7
-$world = @()
+
+# Default parameters for a world
+$script:worldParameters = [PSCustomObject]@{
+    width        = 25
+    height       = 25
+    seed         = Get-Random -Maximum 1000
+    scale        = 0.2
+    octaves      = 4
+    persistance  = 0.2
+    waterCutoff  = -0.2
+    plainsCutoff = 0.2
+    forestCutoff = 0.7
+}
 
 # script:player object
 $script:player = [PSCustomObject]@{
     print    = '@'
     class    = 'none'
     color    = 'white'
-    x        = [int]($worldWidth / 2)  
-    y        = [int]($worldHeight / 2)
+    x        = [int]($script:worldParameters.width / 2)  
+    y        = [int]($script:worldParameters.height / 2)
     location = 'world'
 }
 
@@ -113,6 +116,9 @@ $script:locations = @(
 
 $script:world = @()
 $script:impassablWorld = @()
+
+$script:town = @()
+$script:impassableTown = @()
 
 ## functions:
 # simple function to print out objects with 4 most important items: x, y, print and color
@@ -223,6 +229,24 @@ function GenerateWorld {
     return $world
 }
 
+function calculateImpassables {
+    param ($map)
+    $impassableTiles = @()
+    foreach ($tile in $map) {
+        if ($tile.print -match '[~^]') {
+            $impassableTiles += [PSCustomObject]@{
+                print = $tile.print
+                info  = $tile.info
+                color = $tile.color
+                x     = $tile.x
+                y     = $tile.y
+            }
+        }
+    }
+
+    return $impassableTiles
+}
+
 # printing all the ground items from the array
 function printGroundItems {
     param($groundItems)
@@ -251,8 +275,8 @@ function PrintMap {
     # calculate camera origin
     $halfW = [math]::Floor($viewPortWidth / 2)
     $halfH = [math]::Floor($viewPortHeight / 2)
-    $origX = [math]::Max(0, [math]::Min($script:player.x - $halfW, $worldWidth - $viewPortWidth))
-    $origY = [math]::Max(0, [math]::Min($script:player.y - $halfH, $worldHeight - $viewPortHeight))
+    $origX = [math]::Max(0, [math]::Min($script:player.x - $halfW, $script:worldParameters.width - $viewPortWidth))
+    $origY = [math]::Max(0, [math]::Min($script:player.y - $halfH, $script:worldParameters.height - $viewPortHeight))
 
     # draw all visible tiles
     foreach ($t in $world) {
@@ -366,7 +390,7 @@ function moving {
             $tileY = $script:player.y + 1
             $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
             if ($tile.print -match '[~^]') { return }
-            if ($script:player.y -lt $worldHeight - 1) {
+            if ($script:player.y -lt $script:worldParameters.height - 1) {
                 $script:player.y++
             }
         }
@@ -384,7 +408,7 @@ function moving {
             $tileY = $script:player.y
             $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
             if ($tile.print -match '[~^]') { return }
-            if ($script:player.x -lt $worldWidth - 1) {
+            if ($script:player.x -lt $script:worldParameters.width - 1) {
                 $script:player.x++
             }
         }
@@ -394,26 +418,10 @@ function moving {
 # Function that draws, listens for input and executes the world map functionality
 function gamePlay {
     Clear-Host
-    # calling world generation with all the parameters 
-    # here for now, Make a screen later for more varied world generation
-    $script:world = GenerateWorld -world $world -worldWidth $worldWidth -worldHeight $worldHeight `
-        -seed $worldSeed -scale $worldScale -octaves $worldOctaves -persistence $worldPersistance `
-        -waterLevel $worldWater -plainsLevel $worldPlains -forestLevel $worldForests
-    foreach ($tile in $world) {
-        if ($tile.print -match '[~^]') {
-            $script:impassablWorld += [PSCustomObject]@{
-                print = $tile.print
-                info  = $tile.info
-                color = $tile.color
-                x     = $tile.x
-                y     = $tile.y
-            }
-        }
-    }
-
+    
     while ($true) {
         Clear-Host
-        PrintMap -world $world
+        PrintMap -world $script:world
         PrintHud -health 2 -stamina 2
         $pressedButton = [Console]::ReadKey($true)
         switch ($pressedButton.KeyChar) {
@@ -428,6 +436,114 @@ function gamePlay {
         }
     }
     # Main game loop
+}
+
+function worldParameters {
+    $worldParameterOptions = @(
+        "Seed"
+        "World scale"
+        "World octaves"
+        "World persistance"
+        "Water cutoff"
+        "Plains cutoff"
+        "Forest cutoff"
+        "Generate!"
+        "Back"
+    )
+    $selectedWorldParameter = 0
+    while ($true) {
+        Clear-Host
+        Write-Host "World generation:"
+        Write-Host
+        for ($i = 0; $i -lt $worldParameterOptions.Length; $i++) {
+            if ($selectedWorldParameter -eq $i) {
+                Write-Host " > " -NoNewline -ForegroundColor Cyan -BackgroundColor DarkGray
+                Write-Host $worldParameterOptions[$i] -ForegroundColor Cyan
+            }
+            else {
+                Write-Host " > $($worldParameterOptions[$i])" -ForegroundColor Cyan
+            }
+        }
+    
+        $pressedButton = [Console]::ReadKey($true)
+        switch ($pressedButton.Key) {
+            'w' { if ($selectedWorldParameter -gt 0) { $selectedWorldParameter-- } }
+            's' { if ($selectedWorldParameter -lt $worldParameterOptions.Length - 1) { $selectedWorldParameter++ } }
+            'Enter' {
+                switch ($selectedWorldParameter) {
+                    0 {
+                        Clear-Host
+                        Write-Host "Enter the seed (-99999 to 99999)"
+                        Write-Host "Either enter a unique one or leave it blank for a random seed"
+                        Write-Host
+                        $script:worldParameters.seed = Read-Host " > "
+                    }
+                    1 {
+                        Clear-Host
+                        Write-Host "Enter world scale (0.01 to 1)"
+                        Write-Host "World scale influences how big the biomes are. Bigger values create smaller biomes"
+                        Write-Host
+                        $script:worldParameters.scale = Read-Host " > "
+                    }
+                    2 {
+                        Clear-Host
+                        Write-Host "Enter the number of octaves (1 to 10)"
+                        Write-Host "Number of octaves influences how many layers of noise are stacked on each other"
+                        Write-Host "Higher number will have very long generation times" -ForegroundColor Red
+                        Write-Host
+                        $script:worldParameters.octaves = Read-Host " > "
+                    }
+                    3 {
+                        Clear-Host
+                        Write-Host "Enter world persistance (0.01 to 1)"
+                        Write-Host "Persistance influences how much influence the suceeding octaves have on the first one."
+                        Write-Host
+                        $script:worldParameters.persistance = Read-Host " > "
+                    }
+                    4 {
+                        Clear-Host
+                        Write-Host "Enter water cutoff (-1 to 1)"
+                        Write-Host "Tells the script to what `"elevation`" the water will be set"
+                        Write-Host
+                        $script:worldParameters.waterCutoff = Read-Host " > "
+                    }
+                    5 {
+                        Clear-Host
+                        Write-Host "Enter plains cutoff (-1 to 1)"
+                        Write-Host "Tells the script to what `"elevation`" the plains will be set"
+                        Write-Host
+                        $script:worldParameters.plainsCutoff = Read-Host " > "
+                    }
+                    6 {
+                        Clear-Host
+                        Write-Host "Enter forest cutoff (-1 to 1)"
+                        Write-Host "Tells the script to what `"elevation`" the forest will be set"
+                        Write-Host
+                        $script:worldParameters.forestCutoff = Read-Host " > "
+                    }
+                    7 {
+                        Clear-Host
+                        $script:world = GenerateWorld `
+                            -world $script:world `
+                            -worldWidth $script:worldParameters.width `
+                            -worldHeight $script:worldParameters.height `
+                            -seed $script:worldParameters.seed `
+                            -scale $script:worldParameters.scale `
+                            -octaves $script:worldParameters.octaves `
+                            -persistence $script:worldParameters.persistance `
+                            -waterLevel $script:worldParameters.waterCutoff `
+                            -plainsLevel $script:worldParameters.plainsCutoff `
+                            -forestLevel $script:worldParameters.forestCutoff 
+                        $script:impassablWorld = calculateImpassables -map $script:world
+
+                        gamePlay
+                    }
+                    8 { return }
+                }
+            }
+            Default {}
+        }
+    }
 }
 
 # main menu with multiple choices
@@ -462,7 +578,7 @@ function mainMenu {
             's' { if ($selectedMainMenuOption -lt $mainMenuOptions.Length - 1) { $selectedMainMenuOption++ } }
             'Enter' {
                 switch ($selectedMainMenuOption) {
-                    0 { gamePlay }
+                    0 { worldParameters }
                     1 {}
                     2 {}
                     3 { Clear-Host; return }
