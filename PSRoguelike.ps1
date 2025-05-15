@@ -32,6 +32,7 @@ $gameWindow = @'
 |       |             |
 +-------+-------------+
 '@
+
 $viewPortWidth = 7
 $viewPortHeight = 7
 
@@ -101,7 +102,7 @@ $script:groundItems = @(
     }
 )
 
-$script:locations = @(
+$script:worldLocations = @(
     [PSCustomObject]@{
         print          = 'T'
         name           = 'town name'
@@ -288,7 +289,7 @@ function PrintMap {
     # draw the item and script:player via the same helper 
     printGroundItems -groundItems $script:groundItems
 
-    printLocations -locations $script:locations
+    printLocations -locations $script:worldLocations
     
     printItem -printable $script:player -origX $origX -origY $origY
 }
