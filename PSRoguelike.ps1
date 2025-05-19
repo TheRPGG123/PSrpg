@@ -8,6 +8,8 @@ chcp 65001
 . ".\modules\terrainGeneration.ps1"
 . ".\modules\locationGenerator.ps1"
 . ".\modules\rendering.ps1"
+. ".\modules\misc.ps1"
+. ".\modules\playerInterractions.ps1"
 
 $script:devmode = $false
 
