@@ -3,10 +3,6 @@ You go around and fight in the dungeons then go to the towns to sell your loot.
 
 TO-DO:
 - Make the town map and make it enterable as well as traversable. Fron them on when you spawn, you spawn in the center of the town
-    - generate grass
-    - place random trees
-    - roads from the center to the edge
-    - pepper down houses
 - Add a system for spawning locations (Dunceons, ruins, Mineshafts...)
 
 PLAN:

@@ -1,3 +1,18 @@
+$gameWindow = @'
++-------+-------------+
+|       |             |
+|       |             |
+|       |             |
+|       |             |
+|       |             |
+|       |             |
+|       |             |
++-------+-------------+
+'@
+
+$viewPortWidth = 7
+$viewPortHeight = 7
+
 # checks is an item is in viewport to draw it or not
 function ifInViewport {
     param(
@@ -44,7 +59,7 @@ function printLocations {
 
 # function for printing the game window
 function PrintMap {
-    param($world)
+    param($map)
     Clear-Host
     Write-Host $gameWindow
 

@@ -8,7 +8,6 @@ chcp 65001
 . ".\modules\terrainGeneration.ps1"
 . ".\modules\locationGenerator.ps1"
 . ".\modules\rendering.ps1"
-. ".\modules\misc.ps1"
 . ".\modules\playerInterractions.ps1"
 
 $script:devmode = $false
@@ -26,21 +25,6 @@ ______  _________________ _____
                                 
                                 
 "@
-
-$gameWindow = @'
-+-------+-------------+
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-|       |             |
-+-------+-------------+
-'@
-
-$viewPortWidth = 7
-$viewPortHeight = 7
 
 # Default parameters for a world
 $script:worldParameters = [PSCustomObject]@{
@@ -124,18 +108,20 @@ $script:worldLocations = @(
 $script:world = @()
 $script:impassablWorld = @()
 
+
 $script:town = @()
 $script:impassableTown = @()
+
+$script:curentLocation = @()
+$script:currentImpassables = @()
 
 ## functions:
 # Function that draws, listens for input and executes the world map functionality
 function worldMapMovement {
-    Clear-Host
-    
+    # Main game loop
     while ($true) {
         Clear-Host
-        PrintMap -world $script:world
-        PrintHud -health 2 -stamina 2
+        PrintMap -map $script:world
         $pressedButton = [Console]::ReadKey($true)
         switch ($pressedButton.KeyChar) {
             'w' { moving -direcrion 'up' }
@@ -144,11 +130,10 @@ function worldMapMovement {
             'd' { moving -direcrion 'right' }
             'e' { inventory } # inventory
             'f' {  } # interractions
-            'p' { Clear-Host; return }
+            'p' {  }
             Default {}
         }
     }
-    # Main game loop
 }
 
 function worldParameters {
@@ -247,9 +232,8 @@ function worldParameters {
                             -waterLevel $script:worldParameters.waterCutoff `
                             -plainsLevel $script:worldParameters.plainsCutoff `
                             -forestLevel $script:worldParameters.forestCutoff 
-                        $script:impassablWorld = calculateImpassables -map $script:world
-
-                        
+                        $script:impassablWorld = calculateImpassables -map $script:world  
+                        return
                     }
                 }
             }
@@ -290,7 +274,10 @@ function mainMenu {
             's' { if ($selectedMainMenuOption -lt $mainMenuOptions.Length - 1) { $selectedMainMenuOption++ } }
             'Enter' {
                 switch ($selectedMainMenuOption) {
-                    0 { worldParameters; worldMapMovement }
+                    0 { 
+                        worldParameters
+                        worldMapMovement
+                    }
                     1 {}
                     2 {}
                     3 { Clear-Host; return }
