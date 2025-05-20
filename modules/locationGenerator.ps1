@@ -1,3 +1,9 @@
+﻿chcp 65001
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+[Console]::InputEncoding = [Text.UTF8Encoding]::new()
+[Console]::CursorVisible = $false
+Clear-Host
+
 $script:town = @()
 
 $locationHeight = 25
@@ -13,6 +19,8 @@ function GenerateHouse {
         [int]   $height, # full outer height, ≥ 3
         [string]$doorSide = 'south'  # north, south, east or west
     )
+
+    $houseTiles = @()
     # pick door position centered on the chosen wall
     switch ($doorSide) {
         'north' { $doorX = $originX + [math]::Floor($width / 2); $doorY = $originY }
@@ -34,7 +42,7 @@ function GenerateHouse {
                     $info = 'doorway'
                 }
                 else {
-                    $char = '#'   # '█' wall
+                    $char = '█' # wall
                     $color = 'darkYellow'
                     $info = 'wooden wall'
                 }
@@ -45,7 +53,7 @@ function GenerateHouse {
                 $info = 'floor'
             }
 
-            $script:town += [PSCustomObject]@{
+            $houseTiles += [PSCustomObject]@{
                 print = $char
                 color = $color
                 info  = 'house'
@@ -54,16 +62,19 @@ function GenerateHouse {
             }
         }
     }
+    return $houseTiles
 }
 
 function generateStartingTown {
+    $town = @()
+
     $grassTexture = ",.;:"
     # filling the location with grass and adding random trees in the mix
     for ($i = 0; $i -lt $locationWidth; $i++) {
         for ($j = 0; $j -lt $locationHeight; $j++) {
             $t = Get-Random -Maximum 12
             if ($t -eq 6) {
-                $script:town += [PSCustomObject]@{
+                $town += [PSCustomObject]@{
                     print = '^'
                     info  = 'A fir tree'
                     color = 'darkGreen'
@@ -72,16 +83,16 @@ function generateStartingTown {
                 }
             }
             elseif ($t -eq 5) {
-                $script:town += [PSCustomObject]@{
-                    print = '^' #'┐' here for when you run the main script
-                    info  = 'A dried up tree'
-                    color = 'darkRed'
+                $town += [PSCustomObject]@{
+                    print = ':'
+                    info  = 'pebbles'
+                    color = 'gray'
                     x     = $i
                     y     = $j
                 }
             }
             else {
-                $script:town += [PSCustomObject]@{
+                $town += [PSCustomObject]@{
                     print = $grassTexture[$(Get-Random -Maximum 3)]
                     info  = 'a tile of green grass'
                     color = 'green'
@@ -94,90 +105,94 @@ function generateStartingTown {
     # draw roads leading in 4 directions
     [int]$roadYoffset = $locationHeight / 2
     for ($i = 0; $i -lt $locationWidth; $i++) {
-        $script:town += [PSCustomObject]@{
-            print = '#' #'░' here for when you run the main script
-            info  = 'paved road'
-            color = 'gray'
-            x     = $i
+        $town += [PSCustomObject]@{
+            print = '#';
+            info  = 'paved road';
+            color = 'gray';
+            x     = $i;
             y     = $roadYoffset
         }
     }
 
     [int]$roadXoffset = $locationWidth / 2
     for ($i = 0; $i -lt $locationHeight; $i++) {
-        $script:town += [PSCustomObject]@{
-            print = '#' #'░' here for when you run the main script
-            info  = 'paved road'
-            color = 'gray'
-            x     = $roadXoffset    
+        $town += [PSCustomObject]@{
+            print = '#';
+            info  = 'paved road';
+            color = 'gray';
+            x     = $roadXoffset ;   
             y     = $i
         }
     }
 
     # draw a well in the center
-    $script:town += [PSCustomObject]@{
-        print = 'O' #'░' here for when you run the main script
-        info  = 'paved road'
+    $town += [PSCustomObject]@{
+        print = 'O'
+        info  = 'well for getting water'
         color = 'darkGray'
         x     = $roadXoffset    
         y     = $roadYoffset
     }
     # place down a few houses in the respective quadrants (1, 2, 3 and 4)
+    $halfW = [int]($locationWidth / 2)
+    $halfH = [int]($locationHeight / 2)
+        
     for ($i = 0; $i -lt $numberOfHouses; $i++) {
+        
+        $w = Get-Random -Minimum 5 -Maximum 9
+        $h = Get-Random -Minimum 5 -Maximum 9
+
         switch ($i) {
             0 {
-                # quadrant NW
-                $w = Get-Random -Minimum 5 -Maximum 9
-                $h = Get-Random -Minimum 5 -Maximum 9
-                $x = Get-Random -Minimum 2 -Maximum ($locationWidth / 2 - $w)
-                $y = Get-Random -Minimum 2 -Maximum ($locationHeight / 2 - $h)
-                $side = @('south', 'east') | Get-Random
-                GenerateHouse -originX $x -originY $y `
-                    -width $w -height $h -doorSide $side
+                # NW
+                $xMin = 2
+                $xMax = $halfW - $w - 1
+                $yMin = 2
+                $yMax = $halfH - $h - 1
+                $doors = 'south', 'east'
             }
             1 {
-                # quadrant NE
-                $w = Get-Random -Minimum 5 -Maximum 9
-                $h = Get-Random -Minimum 5 -Maximum 9
-                $x = Get-Random -Minimum ($locationWidth / 2) -Maximum ($locationWidth - ($w + 1))
-                $y = Get-Random -Minimum 2 -Maximum ($locationHeight / 2 - $h)
-                $side = @('south', 'west') | Get-Random
-                GenerateHouse -originX $x -originY $y `
-                    -width $w -height $h -doorSide $side
+                # NE
+                $xMin = $halfW
+                $xMax = $locationWidth - $w - 1
+                $yMin = 2
+                $yMax = $halfH - $h - 1
+                $doors = 'south', 'west'
             }
             2 {
-                #quadrant SW
-                $w = Get-Random -Minimum 5 -Maximum 9
-                $h = Get-Random -Minimum 5 -Maximum 9
-                $x = Get-Random -Minimum 2 -Maximum ($locationWidth / 2 - $w)
-                $y = Get-Random -Minimum ($locationHeight / 2) -Maximum ($locationHeight - ($h + 1))
-                $side = @('north', 'east') | Get-Random
-                GenerateHouse -originX $x -originY $y `
-                    -width $w -height $h -doorSide $side
+                # SW
+                $xMin = 2
+                $xMax = $halfW - $w - 1
+                $yMin = $halfH
+                $yMax = $locationHeight - $h - 1
+                $doors = 'north', 'east'
             }
             3 {
-                # quadrant SE
-                $w = Get-Random -Minimum 5 -Maximum 9
-                $h = Get-Random -Minimum 5 -Maximum 9
-                $x = Get-Random -Minimum ($locationWidth / 2) -Maximum ($locationWidth - ($w + 1))
-                $y = Get-Random -Minimum ($locationHeight / 2) -Maximum ($locationHeight - ($h + 1))
-                $side = @('north', 'west') | Get-Random
-                GenerateHouse -originX $x -originY $y `
-                    -width $w -height $h -doorSide $side
+                # SE
+                $xMin = $halfW
+                $xMax = $locationWidth - $w - 1
+                $yMin = $halfH
+                $yMax = $locationHeight - $h - 1
+                $doors = 'north', 'west'
             }
-            Default {}
         }
-    }
-}
 
-function testPrintMap {
-    param ($map)
-    foreach ($tile in $map) {
-        [System.Console]::SetCursorPosition($tile.x, $tile.y)
-        Write-Host $tile.print -ForegroundColor $tile.color
-    }
-}
-generateStartingTown
+        # clamp so Min ≤ Max
+        if ($xMax -lt $xMin) { $xMax = $xMin }
+        if ($yMax -lt $yMin) { $yMax = $yMin }
 
-testPrintMap -map $script:town
-Read-Host
+        # now pick coords safely
+        $x = Get-Random -Minimum $xMin -Maximum $xMax
+        $y = Get-Random -Minimum $yMin -Maximum $yMax
+        $side = $doors | Get-Random
+
+        $town += GenerateHouse `
+            -originX  $x `
+            -originY  $y `
+            -width    $w `
+            -height   $h `
+            -doorSide $side
+    }
+
+    return $town
+}

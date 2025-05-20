@@ -68,32 +68,42 @@ function inventory {
 
 # function where all moving and moving checks are done
 function moving {
-    param([string]$direcrion)
+    param(
+        [string]$direcrion,
+        [array]$impassables,
+        [int]$playerx,
+        [int]$playery,
+        [int]$locationH,
+        [int]$locationW
+    )
 
     switch ($direcrion) {
         'up' {
-            $tileX = $script:player.x
-            $tileY = $script:player.y - 1
-            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
-            if ($tile.print -match '[~^]') { return }
-            if ($script:player.y -gt 0) {
+            $tileX = $playerx
+            $tileY = $playery - 1
+            if ($impassables | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }) {
+                return
+            }
+            if ($playery -gt 0) {
                 $script:player.y--
             } 
         }
         'down' {
             $tileX = $script:player.x
             $tileY = $script:player.y + 1
-            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
-            if ($tile.print -match '[~^]') { return }
-            if ($script:player.y -lt $script:worldParameters.height - 1) {
+            if ($impassables | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }) {
+                return
+            }
+            if ($script:player.y -lt $locationH - 1) {
                 $script:player.y++
             }
         }
         'left' {
             $tileX = $script:player.x - 1
             $tileY = $script:player.y
-            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
-            if ($tile.print -match '[~^]') { return }
+            if ($impassables | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }) {
+                return
+            }
             if ($script:player.x -gt 0 ) {
                 $script:player.x--
             }
@@ -101,15 +111,12 @@ function moving {
         'right' {
             $tileX = $script:player.x + 1
             $tileY = $script:player.y
-            $tile = $script:impassablWorld | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }
-            if ($tile.print -match '[~^]') { return }
-            if ($script:player.x -lt $script:worldParameters.width - 1) {
+            if ($impassables | Where-Object { $_.x -eq $tileX -and $_.y -eq $tileY }) {
+                return
+            }
+            if ($script:player.x -lt $locationW - 1) {
                 $script:player.x++
             }
         }
     }
-}
-
-function enterLocation {
-    
 }

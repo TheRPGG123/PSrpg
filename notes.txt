@@ -4,9 +4,14 @@ You go around and fight in the dungeons then go to the towns to sell your loot.
 TO-DO:
 - Make the town map and make it enterable as well as traversable. Fron them on when you spawn, you spawn in the center of the town
 - Add a system for spawning locations (Dunceons, ruins, Mineshafts...)
+- Add the world size option to the parameters screen
 
 PLAN:
 Stat bars: Health, Stamina
 melee weapons: sword, axe, mace, whip, spear
 armor: wooden, copper, bronze, iron, steel
 potions: health, stamina, teleportation
+
+
+BUGS:
+- Town sometimes spawns in the sea and is inaccessible

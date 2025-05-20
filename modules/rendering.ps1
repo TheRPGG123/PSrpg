@@ -48,20 +48,11 @@ function printItem {
     Write-Host $printable.print -ForegroundColor $printable.color
 }
 
-function printLocations {
-    param($locations)
-    foreach ($place in $locations) {
-        if ($place.location -eq $script:player.location -and (ifInViewport -printable $place -origX $origX -origY $origY)) {
-            printItem -printable $place   -origX $origX -origY $origY
-        }
-    }
-}
-
 # function for printing the game window
-function PrintMap {
+function printWorld {
     param($map)
     Clear-Host
-    Write-Host $gameWindow
+    Write-Host $gameWindow -ForegroundColor Gray
 
     # calculate camera origin
     $halfW = [math]::Floor($viewPortWidth / 2)
@@ -70,16 +61,47 @@ function PrintMap {
     $origY = [math]::Max(0, [math]::Min($script:player.y - $halfH, $script:worldParameters.height - $viewPortHeight))
 
     # draw all visible tiles
-    foreach ($t in $world) {
+    foreach ($t in $map) {
         if ($t.x -ge $origX -and $t.x -lt $origX + $viewPortWidth -and $t.y -ge $origY -and $t.y -lt $origY + $viewPortHeight) {
             printItem -printable $t -origX $origX -origY $origY
         }
     }
 
-    # draw the item and script:player via the same helper 
-    printGroundItems -groundItems $script:groundItems
+    # draw all the locations on top of the tiles
+    foreach ($place in $script:worldLocations) {
+        if (ifInViewport -printable $place -origX $origX -origY $origY) {
+            printItem -printable $place   -origX $origX -origY $origY
+        }
+    }
+    
+    printItem -printable $script:player -origX $origX -origY $origY
+}
 
-    printLocations -locations $script:worldLocations
+function printMap {
+    param(
+        [PSCustomObject]$location # your location or world object
+    )
+    Clear-Host
+    Write-Host $gameWindow -ForegroundColor Gray
+
+    # pull dimensions & tiles out of the location
+    $mapTiles = $location.map
+    $mapWidth = $location.width
+    $mapHeight = $location.height
+
+    # camera math
+    $halfW = [math]::Floor($viewPortWidth / 2)
+    $halfH = [math]::Floor($viewPortHeight / 2)
+    $origX = [math]::Max(0, [math]::Min($script:player.x - $halfW, $mapWidth - $viewPortWidth))
+    $origY = [math]::Max(0, [math]::Min($script:player.y - $halfH, $mapHeight - $viewPortHeight))
+
+    # draw the base map
+    foreach ($tile in $mapTiles) {
+        if ($tile.x -ge $origX -and $tile.x -lt $origX + $viewPortWidth `
+                -and $tile.y -ge $origY -and $tile.y -lt $origY + $viewPortHeight) {
+            printItem -printable $tile -origX $origX -origY $origY
+        }
+    }
     
     printItem -printable $script:player -origX $origX -origY $origY
 }
@@ -93,3 +115,4 @@ function PrintHud {
     [System.Console]::SetCursorPosition(9, 3)
     Write-Host "x:$($script:player.x), y:$($script:player.y)"
 }
+

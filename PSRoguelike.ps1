@@ -12,7 +12,7 @@ chcp 65001
 
 $script:devmode = $false
 
-Clear-Host
+#Clear-Host
 
 ## setup of initial important parameters
 $titlecard = @"
@@ -92,44 +92,108 @@ $script:groundItems = @(
     }
 )
 
-$script:worldLocations = @(
-    [PSCustomObject]@{
-        print          = 'T'
-        name           = 'town name'
-        description    = 'Short description of a town'
-        color          = 'yellow'
-        x              = 12
-        y              = 12
-        location       = 'world'
-        whenInLocation = 'town'
+$script:worldLocations = @([PSCustomObject]@{
+        print       = 'T'
+        name        = 'Shellia'
+        description = 'A small starting town'
+        color       = 'yellow'
+        x           = 12
+        y           = 12
+        width       = 25
+        height      = 25
+        playerX     = 0
+        playerY     = 12
+        map         = @()
+        impassables = @()
     }
 )
 
 $script:world = @()
 $script:impassablWorld = @()
-
-
-$script:town = @()
-$script:impassableTown = @()
-
-$script:curentLocation = @()
-$script:currentImpassables = @()
+$script:playerWorldLocationX = 12
+$script:playerWorldLocationY = 12
 
 ## functions:
 # Function that draws, listens for input and executes the world map functionality
+function locationMovement {
+    param($locName)
+    $loc = $script:worldLocations | Where-Object { $_.name -eq $locName }
+
+    $script:player.x = $loc.playerX
+    $script:player.y = $loc.playerY
+
+    while ($true) {
+        Clear-Host
+
+        printMap -location $loc
+
+        $key = [Console]::ReadKey($true).Key
+        switch ($key) {
+            'w' {
+                moving -direcrion 'up' -impassables $loc.impassables -playerx $script:player.x `
+                    -playery $script:player.y -locationH $loc.height -locationW $loc.width 
+            }
+            's' {
+                moving -direcrion 'down' -impassables $loc.impassables -playerx $script:player.x `
+                    -playery $script:player.y -locationH $loc.height -locationW $loc.width 
+            }
+            'a' {
+                moving -direcrion 'left' -impassables $loc.impassables -playerx $script:player.x `
+                    -playery $script:player.y -locationH $loc.height -locationW $loc.width 
+            }
+            'd' {
+                moving -direcrion 'right' -impassables $loc.impassables -playerx $script:player.x `
+                    -playery $script:player.y -locationH $loc.height -locationW $loc.width 
+            }
+
+            'f' {
+                # Exit back to world whenever F is pressed inside location
+                return
+            }
+            'e' {
+                inventory
+            }
+            'p' {
+                # also back to world
+                return
+            }
+        }
+    }
+}
+
 function worldMapMovement {
     # Main game loop
     while ($true) {
         Clear-Host
-        PrintMap -map $script:world
+        PrintWorld -map $script:world
         $pressedButton = [Console]::ReadKey($true)
         switch ($pressedButton.KeyChar) {
-            'w' { moving -direcrion 'up' }
-            's' { moving -direcrion 'down' }
-            'a' { moving -direcrion 'left' }
-            'd' { moving -direcrion 'right' }
+            'w' {
+                moving -direcrion 'up' -impassables $script:impassablWorld -playerx $script:player.x -playery $script:player.y `
+                    -locationH $script:worldParameters.height -locationW $script:worldParameters.width 
+            }
+            's' {
+                moving -direcrion 'down' -impassables $script:impassablWorld -playerx $script:player.x -playery $script:player.y `
+                    -locationH $script:worldParameters.height -locationW $script:worldParameters.width 
+            }
+            'a' {
+                moving -direcrion 'left' -impassables $script:impassablWorld -playerx $script:player.x -playery $script:player.y `
+                    -locationH $script:worldParameters.height -locationW $script:worldParameters.width 
+            }
+            'd' {
+                moving -direcrion 'right' -impassables $script:impassablWorld -playerx $script:player.x -playery $script:player.y `
+                    -locationH $script:worldParameters.height -locationW $script:worldParameters.width 
+            }
             'e' { inventory } # inventory
-            'f' {  } # interractions
+            'f' { 
+                $loc = $script:worldLocations |  Where-Object { $_.x -eq $script:player.x -and $_.y -eq $script:player.y }
+                if ($loc) {
+                    $script:playerWorldLocationX = $script:player.x
+                    $script:playerWorldLocationY = $script:player.y
+                    locationMovement $loc.name
+                }
+            }
+                
             'p' {  }
             Default {}
         }
@@ -232,7 +296,7 @@ function worldParameters {
                             -waterLevel $script:worldParameters.waterCutoff `
                             -plainsLevel $script:worldParameters.plainsCutoff `
                             -forestLevel $script:worldParameters.forestCutoff 
-                        $script:impassablWorld = calculateImpassables -map $script:world  
+                        $script:impassablWorld = calculateImpassables -map $script:world -impassableTerrain "^~"
                         return
                     }
                 }
@@ -256,7 +320,7 @@ function mainMenu {
         worldMapMovement
     }
     while ($true) {
-        Clear-Host
+        #Clear-Host
         Write-Host $titlecard -ForegroundColor DarkCyan
         for ($i = 0; $i -le $mainMenuOptions.Length - 1; $i++) {
             if ($selectedMainMenuOption -eq $i) {
@@ -276,6 +340,8 @@ function mainMenu {
                 switch ($selectedMainMenuOption) {
                     0 { 
                         worldParameters
+                        $script:worldLocations[0].map = generateStartingTown
+                        $script:worldLocations[0].impassables = calculateImpassables -map $script:worldLocations[0].map -impassableTerrain '█'
                         worldMapMovement
                     }
                     1 {}

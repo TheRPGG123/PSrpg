@@ -1,9 +1,12 @@
 # a script that returns an array of all impassable terrain on a certain map, making the movement collision checking faster
 function calculateImpassables {
-    param ($map)
+    param (
+        [array]$map,
+        [string]$impassableTerrain
+    )
     $impassableTiles = @()
     foreach ($tile in $map) {
-        if ($tile.print -match '[~^]') {
+        if ($tile.print -match "$impassableTerrain") {
             $impassableTiles += [PSCustomObject]@{
                 print = $tile.print
                 info  = $tile.info
