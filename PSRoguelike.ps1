@@ -92,21 +92,7 @@ $script:groundItems = @(
     }
 )
 
-$script:worldLocations = @([PSCustomObject]@{
-        print       = 'T'
-        name        = 'Shellia'
-        description = 'A small starting town'
-        color       = 'yellow'
-        x           = 12
-        y           = 12
-        width       = 25
-        height      = 25
-        playerX     = 0
-        playerY     = 12
-        map         = @()
-        impassables = @()
-    }
-)
+$script:worldLocations = @()
 
 $script:world = @()
 $script:impassablWorld = @()
@@ -191,9 +177,10 @@ function worldMapMovement {
                     $script:playerWorldLocationX = $script:player.x
                     $script:playerWorldLocationY = $script:player.y
                     locationMovement $loc.name
+                    $script:player.x = $script:playerWorldLocationX
+                    $script:player.y = $script:playerWorldLocationY
                 }
-            }
-                
+            }  
             'p' {  }
             Default {}
         }
@@ -319,8 +306,9 @@ function mainMenu {
     if ($script:devmode) {
         worldMapMovement
     }
+    
     while ($true) {
-        #Clear-Host
+        Clear-Host
         Write-Host $titlecard -ForegroundColor DarkCyan
         for ($i = 0; $i -le $mainMenuOptions.Length - 1; $i++) {
             if ($selectedMainMenuOption -eq $i) {
@@ -340,8 +328,7 @@ function mainMenu {
                 switch ($selectedMainMenuOption) {
                     0 { 
                         worldParameters
-                        $script:worldLocations[0].map = generateStartingTown
-                        $script:worldLocations[0].impassables = calculateImpassables -map $script:worldLocations[0].map -impassableTerrain '█'
+                        $script:worldLocations = generateLocations
                         worldMapMovement
                     }
                     1 {}

@@ -4,13 +4,6 @@
 [Console]::CursorVisible = $false
 Clear-Host
 
-$script:town = @()
-
-$locationHeight = 25
-$locationWidth = 25
-
-$numberOfHouses = 4
-
 function GenerateHouse {
     param(
         [int]   $originX,
@@ -66,6 +59,11 @@ function GenerateHouse {
 }
 
 function generateStartingTown {
+    param(
+        [int]$numberOfHouses = 4,
+        [int]$locationWidth = 25,
+        [int]$locationHeight = 25
+    )
     $town = @()
 
     $grassTexture = ",.;:"
@@ -146,33 +144,33 @@ function generateStartingTown {
             0 {
                 # NW
                 $xMin = 2
-                $xMax = $halfW - $w - 1
+                $xMax = $halfW - $w - 2
                 $yMin = 2
-                $yMax = $halfH - $h - 1
+                $yMax = $halfH - $h - 2
                 $doors = 'south', 'east'
             }
             1 {
                 # NE
-                $xMin = $halfW
-                $xMax = $locationWidth - $w - 1
+                $xMin = $halfW - 1
+                $xMax = $locationWidth - $w - 2
                 $yMin = 2
-                $yMax = $halfH - $h - 1
+                $yMax = $halfH - $h - 2
                 $doors = 'south', 'west'
             }
             2 {
                 # SW
                 $xMin = 2
-                $xMax = $halfW - $w - 1
-                $yMin = $halfH
-                $yMax = $locationHeight - $h - 1
+                $xMax = $halfW - $w - 2
+                $yMin = $halfH + 1
+                $yMax = $locationHeight - $h - 2
                 $doors = 'north', 'east'
             }
             3 {
                 # SE
-                $xMin = $halfW
-                $xMax = $locationWidth - $w - 1
-                $yMin = $halfH
-                $yMax = $locationHeight - $h - 1
+                $xMin = $halfW + 1
+                $xMax = $locationWidth - $w - 2
+                $yMin = $halfH + 1
+                $yMax = $locationHeight - $h - 2
                 $doors = 'north', 'west'
             }
         }
@@ -195,4 +193,27 @@ function generateStartingTown {
     }
 
     return $town
+}
+
+function generateLocations {
+    $location = @()
+
+    $startingTown = generateStartingTown
+    
+    $location += [PSCustomObject]@{
+        print       = 'T'
+        name        = 'Shellia'
+        description = 'A small starting town'
+        color       = 'yellow'
+        x           = 12
+        y           = 12
+        width       = 25
+        height      = 25
+        playerX     = 0
+        playerY     = 12
+        map         = $startingTown
+        impassables = calculateImpassables -map $startingTown -impassableTerrain '█'
+    }
+    
+    return $location
 }
